@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deploying Microsoft Teams Rooms on Windows for InfoComm 2026 — Part 2</title>
+<meta name="description" content="Part 2 of a two-part technical guide: deploying a Windows-based Microsoft Teams Rooms (MTR) device with Teams Rooms Pro, Intune, and Entra ID — plus a PowerShell script to duplicate the Teams resource account. By Mark Layton.">
+<style>
+  :root{
+    --ms-blue:#5e9be6;
+    --ms-blue-dark:#86b6ef;
+    --ms-blue-deep:#84b4ee;
+    --ink:#d6dfea;
+    --ink-soft:#a9b6c6;
+    --muted:#7c8aa0;
+    --line:#1b2433;
+    --bg:#070b13;
+    --card:#0e1421;
+    --card-2:#121a28;
+    --code-bg:#080d16;
+    --code-ink:#d6deea;
+    --cloud:#3a92e0;
+    --cloud-bg:rgba(58,146,224,.12);
+    --tech:#3bbf78;
+    --tech-bg:rgba(45,160,90,.13);
+    --warn:#e0b341;
+    --warn-bg:rgba(190,150,40,.14);
+    --accent-bar:linear-gradient(90deg,#2f86e0 0%,#63b3ff 100%);
+    --radius:14px;
+    --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 30px rgba(0,0,0,.40);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.65;
+    font-size:17px;
+  }
+  a{color:var(--ms-blue);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  code{
+    font-family:"Cascadia Code","Consolas",ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:.92em;
+    background:#15202f;
+    color:#f0a6c9;
+    padding:.12em .4em;
+    border-radius:5px;
+    border:1px solid #232f40;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    background:radial-gradient(1100px 500px at 75% -15%,#22386a 0%,#142747 38%,#0a1426 70%,#070b13 100%);
+    color:#fff;
+    padding:64px 24px 72px;
+    position:relative;
+    overflow:hidden;
+    border-bottom:1px solid var(--line);
+  }
+  .hero::after{
+    content:"";position:absolute;inset:0;
+    background:
+      radial-gradient(600px 300px at 12% 110%,rgba(120,180,255,.10),transparent),
+      linear-gradient(transparent 55%,rgba(0,0,0,.30));
+    pointer-events:none;
+  }
+  .hero-inner{max-width:1080px;margin:0 auto;position:relative;z-index:1;}
+  .series-pill{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(120,180,255,.16);
+    border:1px solid rgba(120,180,255,.40);
+    color:#cfe4ff;font-weight:600;font-size:.8rem;letter-spacing:.04em;
+    text-transform:uppercase;padding:6px 14px;border-radius:999px;margin-bottom:20px;
+  }
+  .hero h1{
+    font-size:2.7rem;line-height:1.12;margin:.1em 0 .35em;font-weight:700;
+    letter-spacing:-.01em;max-width:18ch;color:#fff;
+  }
+  .hero .subtitle{font-size:1.18rem;opacity:.94;max-width:64ch;font-weight:400;color:#dce7f4;}
+  .hero-meta{
+    display:flex;flex-wrap:wrap;gap:10px 22px;margin-top:26px;font-size:.95rem;color:#cdd9e8;
+  }
+  .hero-meta span{display:inline-flex;align-items:center;gap:7px;}
+  .hero-meta b{font-weight:600;color:#fff;}
+  .series-nav{
+    display:flex;flex-wrap:wrap;gap:12px;margin-top:30px;
+  }
+  .series-nav a{
+    display:inline-flex;align-items:center;gap:8px;
+    background:#2f86e0;color:#fff;font-weight:600;
+    padding:11px 18px;border-radius:8px;font-size:.95rem;
+    box-shadow:var(--shadow);transition:transform .15s ease,background .15s ease;
+  }
+  .series-nav a:hover{text-decoration:none;transform:translateY(-1px);background:#3f97f2;}
+  .series-nav a.ghost{background:rgba(120,180,255,.12);color:#dcebff;color:#cfe4ff;border:1px solid rgba(120,180,255,.4);}
+  .series-nav a.ghost:hover{background:rgba(120,180,255,.20);}
+
+  /* ---------- LAYOUT ---------- */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+  .layout{display:block;margin:36px auto 44px;}
+  @media(max-width:640px){
+    .hero h1{font-size:2rem;}
+  }
+
+  /* ---------- GUIDE-COVERS CARD (was TOC) ---------- */
+  .toc{
+    background:linear-gradient(180deg,#0f1623 0%,#0b111c 100%);
+    border:1px solid #1d2636;border-radius:16px;
+    padding:26px 32px 24px;margin:0 0 26px;
+    box-shadow:var(--shadow);
+  }
+  .toc h4{margin:0 0 18px;font-size:.82rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+  .toc ol{
+    column-count:2;column-gap:56px;
+    list-style:decimal;list-style-position:inside;
+    margin:0;padding:0;
+  }
+  @media(max-width:640px){.toc ol{column-count:1;}}
+  .toc li{margin:0 0 11px;break-inside:avoid;color:var(--muted);font-size:.98rem;padding-left:4px;}
+  .toc li::marker{color:var(--muted);}
+  .toc a{color:var(--ms-blue);}
+  .toc a:hover{color:#7cc0ff;text-decoration:underline;}
+
+  /* ---------- CONTENT ---------- */
+  main{min-width:0;}
+  section{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:30px 34px;margin-bottom:26px;box-shadow:var(--shadow);scroll-margin-top:20px;
+  }
+  section h2{
+    font-size:1.6rem;margin:0 0 .5em;font-weight:700;line-height:1.2;color:#fff;
+    display:flex;align-items:center;gap:12px;
+  }
+  .stepnum{
+    flex:0 0 auto;width:38px;height:38px;border-radius:10px;
+    background:var(--accent-bar);color:#fff;font-size:1.05rem;font-weight:700;
+    display:inline-flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 10px rgba(47,134,224,.45);
+  }
+  section h3{font-size:1.15rem;margin:1.6em 0 .4em;font-weight:600;color:var(--ms-blue-deep);}
+  section p{margin:.7em 0;color:var(--ink-soft);}
+  section ul,section ol{color:var(--ink-soft);padding-left:1.3em;}
+  section li{margin:.35em 0;}
+  hr{border:none;border-top:1px solid var(--line);margin:26px 0;}
+  .lead{font-size:1.12rem;color:var(--ink);}
+
+  /* ---------- CODE BLOCKS ---------- */
+  pre{
+    background:var(--code-bg);color:var(--code-ink);
+    border-radius:10px;padding:18px 18px;overflow:auto;font-size:.86rem;line-height:1.55;
+    border:1px solid #18222f;margin:1em 0;
+    font-family:"Cascadia Code","Consolas",ui-monospace,monospace;
+  }
+  pre code{background:none;border:none;color:inherit;padding:0;font-size:inherit;}
+  .code-head{
+    display:flex;align-items:center;gap:8px;
+    background:#0f1726;color:#9fb0c6;font-size:.78rem;font-weight:600;
+    padding:8px 14px;border-radius:10px 10px 0 0;border:1px solid #18222f;border-bottom:none;
+    letter-spacing:.03em;text-transform:uppercase;margin-top:1em;
+  }
+  .code-head + pre{margin-top:0;border-radius:0 0 10px 10px;}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  .dot.r{background:#ff5f56;}.dot.y{background:#ffbd2e;}.dot.g{background:#27c93f;}
+  .code-head .lang{margin-left:auto;color:#6f8198;}
+
+  .copy-code-btn{
+    flex:0 0 auto;
+    margin-left:10px;
+    cursor:pointer;
+    border:1px solid rgba(94,155,230,.36);
+    background:rgba(47,134,224,.14);
+    color:#b8d8ff;
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    font-size:.72rem;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    padding:6px 12px;
+    border-radius:8px;
+    line-height:1;
+    transition:background .15s ease,border-color .15s ease,color .15s ease,transform .15s ease;
+  }
+  .copy-code-btn:hover,
+  .copy-code-btn:focus{
+    background:rgba(47,134,224,.26);
+    border-color:rgba(94,155,230,.62);
+    color:#fff;
+    outline:none;
+    transform:translateY(-1px);
+  }
+  .copy-code-btn.copied{
+    background:rgba(59,191,120,.18);
+    border-color:rgba(59,191,120,.48);
+    color:#7ee0a8;
+  }
+  .copy-code-btn.copy-failed{
+    background:rgba(224,179,65,.18);
+    border-color:rgba(224,179,65,.48);
+    color:#e7c462;
+  }
+
+  /* ---------- CALLOUTS ---------- */
+  .callout{
+    border-radius:10px;padding:16px 18px 16px 16px;margin:1.1em 0;
+    border:1px solid var(--line);display:flex;gap:14px;align-items:flex-start;
+  }
+  .callout .ico{flex:0 0 auto;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;}
+  .callout .body{min-width:0;}
+  .callout .body strong{display:block;margin-bottom:2px;color:var(--ink);}
+  .callout p{margin:.3em 0;color:var(--ink-soft);}
+  .cloud{background:var(--cloud-bg);border-color:rgba(58,146,224,.35);}
+  .cloud .ico{background:var(--cloud);color:#fff;}
+  .cloud .body strong{color:#8cc0f7;}
+  .tech{background:var(--tech-bg);border-color:rgba(59,191,120,.32);}
+  .tech .ico{background:var(--tech);color:#05231a;}
+  .tech .body strong{color:#7ee0a8;}
+  .warn{background:var(--warn-bg);border-color:rgba(224,179,65,.35);}
+  .warn .ico{background:#caa106;color:#221a00;}
+  .warn .body strong{color:#e7c462;}
+  .note{background:#121a28;border-color:#1b2433;}
+  .note .ico{background:#3a4a63;color:#fff;}
+
+  /* ---------- HANDOFF BANNER ---------- */
+  .handoff{
+    display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch;margin:1.2em 0;
+  }
+  @media(max-width:640px){.handoff{grid-template-columns:1fr;}.handoff .arrow{transform:rotate(90deg);}}
+  .persona{border-radius:12px;padding:16px 18px;border:1px solid var(--line);}
+  .persona.mark{background:var(--cloud-bg);border-color:rgba(58,146,224,.32);}
+  .persona.jon{background:var(--tech-bg);border-color:rgba(59,191,120,.30);}
+  .persona h4{margin:0 0 4px;font-size:1.02rem;color:var(--ink);}
+  .persona .role{font-size:.82rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
+  .persona.mark .role{color:#6fb4f5;}
+  .persona.jon .role{color:#6fd6a0;}
+  .persona p{margin:.5em 0 0;font-size:.92rem;color:var(--ink-soft);}
+  .arrow{display:flex;align-items:center;justify-content:center;font-size:1.6rem;color:var(--muted);font-weight:700;}
+
+  /* ---------- TABLES ---------- */
+  table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.93rem;color:var(--ink-soft);}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
+  th{background:#121a28;color:var(--ms-blue-deep);font-weight:600;font-size:.82rem;letter-spacing:.03em;text-transform:uppercase;}
+  tr:last-child td{border-bottom:none;}
+  td code{font-size:.85em;}
+
+  /* ---------- SPEC CARD ---------- */
+  .specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:1em 0;}
+  .spec{background:#121a28;border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+  .spec .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;}
+  .spec .v{font-size:.98rem;font-weight:600;color:var(--ink);margin-top:2px;word-break:break-word;}
+
+  /* ---------- PILLS / TAGS ---------- */
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin:.6em 0;}
+  .tag{background:rgba(78,163,240,.14);color:#9fc8f5;border:1px solid rgba(78,163,240,.30);border-radius:999px;padding:4px 12px;font-size:.82rem;font-weight:600;}
+
+  /* ---------- REFERENCES ---------- */
+  .refs li{margin:.5em 0;word-break:break-word;}
+  .refs a{font-size:.93rem;}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    background:#060910;color:#a9bace;padding:40px 24px;margin-top:40px;font-size:.92rem;
+    border-top:1px solid var(--line);
+  }
+  footer .wrap{display:flex;flex-wrap:wrap;gap:24px;justify-content:space-between;align-items:center;}
+  footer a{color:#7fc4ff;}
+  footer .brand{font-weight:700;color:#fff;font-size:1.05rem;}
+  .disclaimer{font-size:.82rem;color:#7d90a6;max-width:62ch;margin-top:6px;}
+</style>
+</head>
+<body>
+
+<!-- ===================== HERO ===================== -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="series-pill">● Part 2 of 2 — Windows-based MTR</span>
+    <h1>Deploying Microsoft Teams Rooms on Windows for InfoComm 2026</h1>
+    <p class="subtitle">A step-by-step field guide to standing up a Windows-based Microsoft Teams Rooms device with <b>Teams Rooms Pro</b>, <b>Intune</b>, and <b>Entra ID</b> — including the cloud-to-onsite tech handoff and a PowerShell script to duplicate the Teams resource account.</p>
+    <div class="hero-meta">
+      <span>✍️ <b>Mark Layton</b></span>
+      <span>🏢 <b>The Avail Group</b></span>
+      <span>🛠️ Hardware: <b>Shure & Logitech Windows OS, MTR devices </b></span>
+      <span>📅 InfoComm 2026</span>
+    </div>
+    <nav class="series-nav">
+      <a href="https://discgolfer78.github.io/TeamsRoomsAndroid/" class="ghost">← Part 1: Teams Rooms on Android</a>
+      <a href="#intro">Start reading Part 2 ↓</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="layout">
+
+  <!-- ===================== TOC ===================== -->
+
+
+  <!-- ===================== MAIN ===================== -->
+  <main>
+
+    <!-- INTRO -->
+    <section id="intro">
+      <h2>The mission &amp; the team</h2>
+      <p class="lead">In <a href="https://discgolfer78.github.io/TeamsRoomsAndroid/">Part 1</a> we deployed an <strong>Android-based</strong> Microsoft Teams Rooms device. In Part 2 we do the same for a <strong>Windows-based</strong> MTR — and this time we lean on <strong>Windows Autopilot + Autologin</strong> so the device provisions itself, touchless, the moment it's plugged in onsite.</p>
+      <p>The destination is <a href="https://www.infocommshow.org/">InfoComm 2026</a> — the AV/UC industry's flagship show. We're deploying <strong>two Windows-based MTR devices</strong>: the first is built on the <strong>Shure IntelliMix Foundation Compute (IMXCPU5)</strong> mini-PC, and the second is a <strong>Logitech</strong> Teams Rooms on Windows system. There's a nice bit of history here: Microsoft actually announced <em>Autopilot and Autologin for Teams Rooms on Windows as generally available at InfoComm</em>, so using it to deploy at InfoComm 2026 feels right at home.</p>
+
+      <h3>Two people, one seamless deployment</h3>
+      <p>The whole point of this architecture is that the heavy lifting happens in the cloud <em>before</em> the hardware ever reaches the show floor. That splits the work cleanly between two roles:</p>
+
+      <div class="handoff">
+        <div class="persona mark">
+          <span class="role">Cloud Engineer</span>
+          <h4>Mark (me)</h4>
+          <p>Registers the device, builds the Intune + Entra ID + Teams Rooms Pro configuration, creates and licenses the resource accounts, and can remotely complete or recover a room from anywhere.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="persona jon">
+          <span class="role">Onsite Technician</span>
+          <h4>Jon</h4>
+          <p>Unboxes the two MTR devices at InfoComm, plugs in power + Ethernet, powers on, and watches Autologin do its thing. No global admin rights needed — only the scoped roles Mark assigns.</p>
+        </div>
+      </div>
+
+      <div class="callout cloud">
+        <div class="ico">☁️</div>
+        <div class="body">
+          <strong>Why this matters</strong>
+          <p>On a previous Windows MTR deployment (a Lenovo unit in Canada), we completed the entire device configuration remotely — from the US, over 3,200&nbsp;km away — through the Teams Rooms Pro portal after Autopilot/Autologin finished. That same remote capability is what makes the onsite job almost effortless for Jon. We'll cover it in <a href="#remote">Section 12</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== WHAT THIS GUIDE COVERS ===================== -->
+    <aside class="toc">
+      <h4>What this guide covers</h4>
+      <ol>
+        <li><a href="#intro">The mission &amp; the team</a></li>
+        <li><a href="#hardware">The hardware (Shure IMXCPU5)</a></li>
+        <li><a href="#prereqs">Cloud prerequisites</a></li>
+        <li><a href="#register">Register in Partner Center</a></li>
+        <li><a href="#group">Dynamic device group</a></li>
+        <li><a href="#app">MTRP Provisioning Tool</a></li>
+        <li><a href="#esp">Enrollment Status Page</a></li>
+        <li><a href="#profile">Self-deploy Autopilot profile</a></li>
+        <li><a href="#laps">LAPS policy</a></li>
+        <li><a href="#resacct">Create the resource account</a></li>
+        <li><a href="#mailbox">Mailbox config (PowerShell)</a></li>
+        <li><a href="#signin">Sign-in test</a></li>
+        <li><a href="#cabypass">CA / MFA bypass group</a></li>
+        <li><a href="#duplicate">Duplicate the account (script)</a></li>
+        <li><a href="#remote">Remote access &amp; Autologin</a></li>
+        <li><a href="#handoff">Handoff to Jon</a></li>
+        <li><a href="#refs">References</a></li>
+      </ol>
+    </aside>
+
+    <!-- HARDWARE -->
+    <section id="hardware">
+      <h2>The hardware: Shure IntelliMix Foundation Compute</h2>
+      <p>Our compute engine is the <strong>Shure IntelliMix Foundation Compute, model IMXCPU5</strong> — a certified mini-PC running <strong>Microsoft Teams Rooms on Windows (Windows 11)</strong>. Everything you need to register the device with Autopilot is printed on the box label.</p>
+
+      <div class="specs">
+        <div class="spec"><div class="k">Model</div><div class="v">IMXCPU5 (Mini-PC)</div></div>
+        <div class="spec"><div class="k">Platform</div><div class="v">Teams Rooms on Windows 11</div></div>
+        <div class="spec"><div class="k">Serial Number (SN)</div><div class="v">XXXXXX-XXXXXXXXXXXXXXXXXX</div></div>
+        <div class="spec"><div class="k">Product Key ID (PKID)</div><div class="v">555555555555</div></div>
+        <div class="spec"><div class="k">Partner Center Group Tag</div><div class="v">MTR-Shure_Conference_Room_Infocomm2026</div></div>
+        <div class="spec"><div class="k">Companion mic/audio</div><div class="v">Shure IntelliMix Bar Pro</div></div>
+      </div>
+
+      <div class="callout note">
+        <div class="ico">ℹ️</div>
+        <div class="body">
+          <strong>Find the PKID on the box</strong>
+          <p><strong>The Microsoft Product Key ID (PKID)</strong> and serial number are printed on the side of the carton. The PKID is what you (or your reseller) use to register the device in Partner Center. Values shown here are genericized for this post.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PREREQS -->
+    <section id="prereqs">
+      <h2>Cloud prerequisites (Mark's checklist)</h2>
+      <p>Before any hardware ships, I confirm the tenant-side prerequisites for Windows Autopilot + Autologin. Most of these are configured once and reused for every future room.</p>
+      <ul>
+        <li><strong>Teams Rooms Pro licenses</strong> — one per device, assigned to each resource account. Critically, <strong>Teams Rooms Pro includes the Intune and Microsoft Entra ID P1 licenses</strong> needed for Autopilot. (Teams Rooms <em>Basic</em> will <strong>not</strong> work with Autopilot.)</li>
+        <li><strong>Permissions</strong> — for Intune: <code>Intune Administrator</code> or <em>Policy and Profile Manager</em>; for the Teams Rooms Pro portal: <em>Teams Rooms Pro Manager</em>. Microsoft recommends least-privilege roles over Global Admin.</li>
+        <li><strong>Automatic Intune (MDM) enrollment</strong> is set up, and devices <strong>Microsoft Entra join</strong> (self-deploying mode does <em>not</em> support Entra hybrid join).</li>
+        <li><strong>Windows 11</strong> on a certified MTR device with <strong>TPM 2.0</strong> (required for self-deploying mode attestation).</li>
+        <li><strong>Resource accounts</strong> created and licensed (we automate this in <a href="#duplicate">Section 11</a>).</li>
+      </ul>
+      <div class="tags">
+        <span class="tag">Teams Rooms Pro</span>
+        <span class="tag">Intune</span>
+        <span class="tag">Entra ID P1</span>
+        <span class="tag">Windows 11</span>
+        <span class="tag">TPM 2.0</span>
+        <span class="tag">Entra join</span>
+      </div>
+    </section>
+
+    <!-- 1 REGISTER -->
+    <section id="register">
+      <h2><span class="stepnum">1</span> Register the device in Partner Center</h2>
+      <p>Autopilot needs the device's hardware identity loaded into the tenant. As a CSP, I register the Shure and Logitech Windows based MTR devices through <strong>Microsoft Partner Center</strong> using the <strong>PKID</strong> from the box.</p>
+      <ul>
+        <li>Register the device with <strong>PKID <code>555555555555</code></strong> in Partner Center.</li>
+        <li>Set the <strong>Group Tag</strong> to <code>MTR-Shure_Conference_Room_Infocomm2026</code>. The <code>MTR-</code> prefix is mandatory — it's how the Teams Rooms Pro portal distinguishes Teams Rooms from every other Autopilot device, and it's what the dynamic group keys on.</li>
+      </ul>
+      <div class="callout warn">
+        <div class="ico">⚠️</div>
+        <div class="body">
+          <strong>The <code>MTR-</code> Group Tag is not optional</strong>
+          <p>When loading the hardware identity, Microsoft <em>requires</em> the GroupTag to be prefixed with <code>MTR-</code>. Get this wrong and the device won't be recognized by the Pro Management portal or picked up by the dynamic device group.</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/autopilot/partner-registration">Partner registration</a> · <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-registration4partners">Autopilot registration for partners</a></p>
+    </section>
+
+    <!-- 2 GROUP -->
+    <section id="group">
+      <h2><span class="stepnum">2</span> Create an Entra ID dynamic device group</h2>
+      <p>I create one dynamic <strong>device</strong> group — <code>MTR Dynamic device group</code> — and target <em>all</em> MTR policy at it: apps, the Autopilot profile, the ESP, and LAPS. When a device is registered in Partner Center, with the <code>MTR-</code> Group Tag, this dynamic membership rule automatically adds the MTR device to the group. Note: you may need to sync in Intune and it can take up to 15-20 mins for the deviec to show up in Intune.</p>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Dynamic membership rule <span class="lang">Entra ID</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code>(device.devicePhysicalIds -any _ -startswith "[OrderID]:MTR-")</code></pre>
+      <div class="callout cloud">
+        <div class="ico">☁️</div>
+        <div class="body">
+          <strong>One group to rule them all</strong>
+          <p>Targeting everything at a single dynamic device group keeps the deployment clean and repeatable. If you also manage non-MTR Windows devices in the same tenant, Microsoft recommends <em>excluding</em> this group from your other policies so the rooms only get the policies meant for them.</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-autologin#step-3-create-a-group-for-the-teams-rooms-devices">Create a group for the Teams Rooms devices</a></p>
+    </section>
+
+    <!-- 3 APP -->
+    <section id="app">
+      <h2><span class="stepnum">3</span> Deploy the MTRP Provisioning Tool</h2>
+      <p>The <strong>Teams Rooms app update tool (MTRP Provisioning Tool)</strong> updates the Teams Rooms application to a version that supports Autopilot + Autologin. I package it as a Win32 app in Intune and assign it to the <code>MTR Dynamic device group</code>, and include it in the ESP so it runs during provisioning.</p>
+      <ul>
+        <li>Created the app: <strong>MTRP Provisioning Tool</strong> (created June 8, 2026).</li>
+        <li>App type: <strong>Windows app (Win32)</strong>, assigned to <code>MTR Dynamic device group</code>.</li>
+      </ul>
+      <div class="callout note">
+        <div class="ico">🧰</div>
+        <div class="body">
+          <strong>Keep the provisioning tool current</strong>
+          <p>Autologin failures during self-deploy are frequently traced back to an outdated provisioning tool. Use the latest version when you package it.</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-autologin#step-4-deploy-teams-rooms-app-update-tool">Deploy Teams Rooms app update tool</a></p>
+    </section>
+
+    <!-- 4 ESP -->
+    <section id="esp">
+      <h2><span class="stepnum">4</span> Create the Enrollment Status Page (ESP)</h2>
+      <p>The ESP blocks device access until everything — policies, apps, certificates, the provisioning tool — has finished installing. I create an ESP profile and assign it to the <code>MTR Dynamic device group</code>.</p>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-autologin#step-5-create-a-windows-autopilot-enrollment-status-page-esp-profile">Create a Windows Autopilot ESP profile</a></p>
+    </section>
+
+    <!-- 5 PROFILE -->
+    <section id="profile">
+      <h2><span class="stepnum">5</span> Create &amp; assign the self-deploying Autopilot profile</h2>
+      <p>This is the profile that makes the magic happen. I create a <strong>self-deploying mode</strong> Windows Autopilot profile — <code>MTR_Windows_SelfDeploy</code> — and assign it to the <code>MTR Dynamic device group.</code></p>
+      <p>Self-deploying mode:</p>
+      <ul>
+        <li>Joins the device to <strong>Microsoft Entra ID</strong> and enrolls it in <strong>Intune</strong> automatically.</li>
+        <li>Provisions all policies, apps, and profiles before anyone can touch the device.</li>
+        <li>Uses the device's <strong>TPM 2.0</strong> for attestation — no user credentials entered during OOBE.</li>
+      </ul>
+      <div class="callout warn">
+        <div class="ico">⚠️</div>
+        <div class="body">
+          <strong>Entra join only — not hybrid</strong>
+          <p>Self-deploying mode is supported for <strong>Microsoft Entra join</strong> devices only. It is <em>not</em> supported for Entra hybrid join. Devices also need TPM 2.0 (a self-deploy attempt on a VM or non-TPM device can fail with the <code>0x800705B4</code> timeout).</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/autopilot/tutorial/self-deploying/self-deploying-autopilot-profile#create-and-assign-self-deploying-windows-autopilot-profile">Create &amp; assign a self-deploying Autopilot profile</a></p>
+    </section>
+
+    <!-- 6 LAPS -->
+    <section id="laps">
+      <h2><span class="stepnum">6</span> Create &amp; assign a LAPS policy</h2>
+      <p>The <strong>Local Administrator Password Solution (LAPS)</strong> manages and rotates the local admin password on the MTR device, and backs it up to Entra ID. An Entra/Intune admin can retrieve the current local-admin password from the portal — extremely handy for onsite troubleshooting (more on that in <a href="#remote">Section 12</a>).</p>
+      <h3>Password rotation settings</h3>
+      <ul>
+        <li><code>PasswordAgeDays</code> controls the maximum local-admin password age. If you don't configure it, it <strong>defaults to 30 days</strong>.</li>
+        <li>For <strong>Microsoft Entra ID backup</strong>, the supported range is a <strong>minimum of 7 days</strong> and a <strong>maximum of 365 days</strong>.</li>
+      </ul>
+      <div class="callout cloud">
+        <div class="ico">☁️</div>
+        <div class="body">
+          <strong>Mark's recommendation</strong>
+          <p>Set it and let it default to <strong>30 days</strong>LAPS auto-rotates the password on that cadence, so you always have a fresh, retrievable local-admin credential without managing it by hand.</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings">LAPS management policy settings</a> · <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-autologin#step-7-create-and-assign-a-local-administrator-password-solution-laps-policy">LAPS for Teams Rooms</a></p>
+    </section>
+
+    <!-- 7 RESOURCE ACCOUNT -->
+    <section id="resacct">
+      <h2><span class="stepnum">7</span> Create the resource account &amp; assign Teams Rooms Pro</h2>
+      <p>Every MTR device needs its own <strong>resource account</strong> — a room mailbox in Exchange Online that the device signs into and that users book in Outlook. For <strong>Windows-based</strong> MTR devices, the resource account UPN must start with the <code>MTR-</code> prefix. After you create the resource account, go into the M365 Admin Center and change the password.</p>
+
+      <div class="specs">
+        <div class="spec"><div class="k">Template resource account</div><div class="v">MTR-Shure_Conference_Room@abc123.onmicrosoft.com</div></div>
+        <div class="spec"><div class="k">License</div><div class="v">Microsoft Teams Rooms Pro</div></div>
+        <div class="spec"><div class="k">Naming convention</div><div class="v">MTR- prefix (required for Windows MTR)</div></div>
+      </div>
+
+      <p>Create it cloud-only in Entra ID + Exchange Online, assign the <strong>Teams Rooms Pro</strong> license, and — importantly — <strong>do not</strong> require a password change at next sign-in (that breaks Teams Rooms sign-in).</p>
+
+      <div class="callout warn">
+        <div class="ico">⚠️</div>
+        <div class="body">
+          <strong>You never want to force a password change for a Teams Rooms resource account, this can cause issues</strong>
+          <p>When you set the password, <strong>uncheck "Require this user to change their password when they first sign in."</strong> A forced change will cause the Teams Rooms device sign-in to fail.</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/create-resource-account?tabs=m365-admin-center%2Cgraph-powershell-password#create-resource-account--assign-the-license">Create resource account &amp; assign the license</a></p>
+    </section>
+
+    <!-- 8 MAILBOX CONFIG -->
+    <section id="mailbox">
+      <h2><span class="stepnum">8</span> Configure the mailbox (PowerShell 7)</h2>
+      <p>With the account created, I configure the mailbox for unattended room behavior using <strong>Exchange Online PowerShell</strong>, then set the time zone and disable password expiration via <strong>Microsoft Graph</strong>.</p>
+
+      <h3>Connect to Exchange Online</h3>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Connect <span class="lang">PowerShell 7</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code>Import-Module ExchangeOnlineManagement
+Connect-ExchangeOnline -UserPrincipalName Admin@abc123.onmicrosoft.com -ShowBanner:$false</code></pre>
+
+      <h3>Configure calendar processing (AutoAccept)</h3>
+      <p>These are Microsoft's recommended Teams Rooms values: auto-accept bookings, keep the subject/body needed for join buttons, strip attachments the device can't open, and add a friendly response.</p>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Set-CalendarProcessing <span class="lang">Exchange Online</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code>Set-CalendarProcessing -Identity "MTR-Shure_Conference_Room" `
+  -AutomateProcessing AutoAccept `
+  -AddOrganizerToSubject $false `
+  -AllowRecurringMeetings $true `
+  -DeleteAttachments $true `
+  -DeleteComments $false `
+  -DeleteSubject $false `
+  -ProcessExternalMeetingMessages $true `
+  -RemovePrivateProperty $false `
+  -AddAdditionalResponse $true `
+  -AdditionalResponse "Your meeting has been scheduled with the Shure, Microsoft Teams Room"</code></pre>
+
+      <h3>Set the time zone to Pacific Time for InfoComm 2026 in Las Vegas</h3>
+      <p>For Las Vegas, use the Windows/Exchange time zone ID <code>Pacific Standard Time</code>. Even though the ID says “Standard,” it is the correct value for Pacific Time and automatically handles daylight saving time where applicable. Note: run the 2 PowerShell commands below individually.</p>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Time zone <span class="lang">Exchange Online</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code># Set
+Set-MailboxRegionalConfiguration -Identity "MTR-Shure_Conference_Room@abc123.onmicrosoft.com" -TimeZone "Pacific Standard Time"
+
+# Verify
+Get-MailboxRegionalConfiguration -Identity "MTR-Shure_Conference_Room@abc123.onmicrosoft.com"</code></pre>
+
+      <h3>Turn off password expiration</h3>
+      <p>Run elevated PowerShell 7 and connect to Microsoft Graph, then disable expiration so the password never expires, this makes sure no one gets locked out of the Teams Room due to a password reset.</p>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Disable password expiration <span class="lang">Microsoft Graph</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code>Connect-MgGraph -Scopes "User.ReadWrite.All"
+
+Update-MgUser -UserId MTR-Shure_Conference_Room@abc123.onmicrosoft.com `
+  -PasswordPolicies "DisablePasswordExpiration"</code></pre>
+  
+      <h3>Verify the password expiration action above worked - Expected -> PasswordPolicies:"DisablePasswordExpiration"</h3>
+      <p>Run elevated PowerShell 7.</p>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Disable password expiration <span class="lang">Microsoft Graph</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code>Get-MgUser -UserId "MTR-Shure_Conference_Room@abc123.onmicrosoft.com" `
+-Property UserPrincipalName,PasswordPolicies | Select-Object UserPrincipalName, PasswordPolicies</code></pre>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/microsoft-365/admin/manage/set-password-expiration-policy?view=o365-worldwide">disable password policy</a></p>
+    </section>
+
+    <!-- 9 SIGN-IN TEST -->
+    <section id="signin">
+      <h2><span class="stepnum">9</span> Test the resource account sign-in</h2>
+      <p>Before handing anything off, you can to validate the account with Microsoft's <strong>Teams Rooms sign-in test</strong>. It confirms the resource account is correctly licensed and configured for a successful device sign-on.</p>
+      <p>Tool: <a href="https://testconnectivity.microsoft.com/tests/TeamsMTRDeviceSignIn/input">Teams Rooms Device Sign-In test →</a></p>
+      <div class="callout tech">
+        <div class="ico">🛠️</div>
+        <div class="body">
+          <strong>Green light before shipping</strong>
+          <p>Passing this test in the cloud means Jon won't be stuck onsite chasing a sign-in failure. Validate first, deploy second.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 CA BYPASS -->
+    <section id="cabypass">
+      <h2><span class="stepnum">10</span> Exclude the room from MFA (CA bypass group)</h2>
+      <p>Microsoft recommends that Teams Rooms resource accounts be <strong>excluded from MFA</strong> in Conditional Access — a shared room device can't satisfy an interactive MFA prompt. Rather than editing CA policies per account, I use a dynamic group.</p>
+      <ul>
+        <li>Created an Entra security group: <code>MTR-CA-Bypass</code>, which is excluded from the MFA Conditional Access policies. (This group works for <strong>both</strong> Android and Windows MTR resource accounts.)</li>
+        <li>Membership is driven by the <strong>Department</strong> attribute on each resource account.</li>
+      </ul>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Dynamic membership rule, adds resource account to Entra Dynamic group, created above in step #2-> MTR-CA-Bypass<span class="lang">Entra ID</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code>(user.department -eq "Resource Account for MTR")</code></pre>
+      <div class="callout cloud">
+        <div class="ico">☁️</div>
+        <div class="body">
+          <strong>Set the attribute, membership follows</strong>
+          <p>As soon as a resource account is stamped with <code>Department = "Resource Account for MTR"</code>, it auto-joins <code>MTR-CA-Bypass</code> and is excluded from MFA. The duplication script in <a href="#duplicate">Section 11</a> sets this attribute for you.</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices#teams-rooms-conditional-access-best-practices">Teams Rooms Conditional Access best practices</a></p>
+    </section>
+
+    <!-- 11 DUPLICATE SCRIPT -->
+    <section id="duplicate">
+      <h2><span class="stepnum">11</span> Duplicate the resource account with PowerShell</h2>
+      <p>The first account, <code>MTR-Shure_Conference_Room@abc123.onmicrosoft.com</code>, was built by hand following the steps above — that's our <strong>template</strong>. For the <strong>second device — a Logitech Windows MTR</strong> (and every device after it), you can duplicate the template with a script so the configuration is identical every time.</p>
+
+      <div class="specs">
+        <div class="spec"><div class="k">Template (source)</div><div class="v">MTR-Shure_Conference_Room@abc123.onmicrosoft.com</div></div>
+        <div class="spec"><div class="k">New account (target)</div><div class="v">MTR-Microsoft_Express_Install_1@abc123.onmicrosoft.com</div></div>
+        <div class="spec"><div class="k">Belongs to (device 2)</div><div class="v">Logitech Windows-based MTR</div></div>
+      </div>
+
+      <p>The script connects to Exchange Online + Microsoft Graph and reproduces the full template configuration on the new account:</p>
+      <ul>
+        <li>Creates the <strong>Room mailbox</strong> (no forced password change).</li>
+        <li>Sets <strong>Usage Location</strong> and assigns the <strong>Teams Rooms Pro</strong> license.</li>
+        <li>Copies the template's <strong>calendar-processing</strong> (AutoAccept) settings.</li>
+        <li>Sets the mailbox <strong>time zone</strong> (Pacific Standard Time).</li>
+        <li>Disables <strong>password expiration</strong>.</li>
+        <li>Stamps <strong>Department = "Resource Account for MTR"</strong> so it auto-joins <code>MTR-CA-Bypass</code>.</li>
+      </ul>
+
+      <div class="callout note">
+        <div class="ico">📋</div>
+        <div class="body">
+          <strong>Prerequisites</strong>
+          <p>PowerShell 7+ with the <code>ExchangeOnlineManagement</code>, <code>Microsoft.Graph.Users</code>, and <code>Microsoft.Graph.Identity.DirectoryManagement</code> modules. Run as Exchange Administrator + User Administrator (least privilege). Confirm <code>-TeamsRoomsProSku</code> matches the SkuPartNumber in your tenant.</p>
+        </div>
+      </div>
+
+      <h3>Note, when you run the full script below, you will be asked to input the below 4 fields starting with "AdminUpn"</h3>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Duplicate one account <span class="lang">PowerShell 7</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+      <pre><code>.\Duplicate-MtrResourceAccount.ps1 `
+    -AdminUpn       "Admin@abc123.onmicrosoft.com" `
+    -TemplateUpn    "MTR-Shure_Conference_Room@abc123.onmicrosoft.com" `
+    -NewUpn         "MTR-Microsoft_Express_Install_1@abc123.onmicrosoft.com" `
+    -NewDisplayName "MTR-Microsoft_Express_Install_1"</code></pre>
+
+      <h3>The full script, you will be asked to input 4 fields(see above) and then enter a password for the resource account</h3>
+      <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Duplicate-MtrResourceAccount.ps1 <span class="lang">PowerShell 7</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
+<pre><code class="powershell">&lt;#
+.SYNOPSIS
+    Duplicates a Microsoft Teams Rooms (MTR) resource account from an existing
+    "template" account so additional Windows-based MTR devices can be deployed
+    quickly and consistently.
+
+.DESCRIPTION
+    Part 2 companion script for the blog series:
+      "Deploying Microsoft Teams Rooms on Windows for InfoComm 2026"
+    Author : Mark Layton  (Cloud Engineer)
+    Field  : Jon          (Onsite Technician / handoff)
+
+    Given a working template resource account (created by hand the first time,
+    per the Part 2 walkthrough), this script stamps out an identical new
+    resource account. It:
+
+      1. Creates a new Room mailbox in Exchange Online.
+      2. Sets a known password and disables "change password at next sign-in"
+         (a forced change breaks Teams Rooms sign-in).
+      3. Sets the Usage Location (required before a license can be assigned).
+      4. Assigns the Microsoft Teams Rooms Pro license.
+      5. Copies the template's calendar-processing (AutoAccept) settings.
+      6. Sets the mailbox time zone.
+      7. Disables password expiration (Update-MgUser).
+      8. Stamps the Department attribute used by the "MTR-CA-Bypass" dynamic
+         group so the account is auto-excluded from MFA Conditional Access.
+
+    Re-running for the same account is safe: existing items are detected and
+    skipped or updated rather than recreated.
+
+    OFFICIAL DOCS CROSS-REFERENCED
+      Create resource account ........ https://learn.microsoft.com/en-us/microsoftteams/rooms/create-resource-account
+      Configure mailbox properties ... https://learn.microsoft.com/en-us/microsoftteams/hybrid-meetings-device-config-mailbox
+      Conditional Access best practice  https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices
+      Autopilot + Autologin .......... https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-autologin
+
+.NOTES
+    Requires PowerShell 7+ and the modules:
+        ExchangeOnlineManagement
+        Microsoft.Graph.Users
+        Microsoft.Graph.Identity.DirectoryManagement
+    Run from an account with Exchange Administrator + User Administrator
+    (or least-privilege equivalents). Avoid Global Admin unless required.
+
+.EXAMPLE
+    .\Duplicate-MtrResourceAccount.ps1 `
+        -AdminUpn          "Admin@abc123.onmicrosoft.com" `
+        -TemplateUpn       "MTR-Shure_Conference_Room@abc123.onmicrosoft.com" `
+        -NewUpn            "MTR-Microsoft_Express_Install_1@abc123.onmicrosoft.com" `
+        -NewDisplayName    "MTR-Microsoft_Express_Install_1" `
+        -NewPassword       (Read-Host -AsSecureString "New room account password")
+
+.EXAMPLE
+    # Stamp out several rooms in one run (Install_1, Install_2, Install_3)
+    1..3 | ForEach-Object {
+        .\Duplicate-MtrResourceAccount.ps1 `
+            -AdminUpn       "Admin@abc123.onmicrosoft.com" `
+            -TemplateUpn    "MTR-Shure_Conference_Room@abc123.onmicrosoft.com" `
+            -NewUpn         "MTR-Microsoft_Express_Install_$_@abc123.onmicrosoft.com" `
+            -NewDisplayName "MTR-Microsoft_Express_Install $_"
+    }
+#&gt;
+
+[CmdletBinding(SupportsShouldProcess = $true)]
+param(
+    # The admin you connect to Exchange Online / Microsoft Graph as.
+    [Parameter(Mandatory = $true)]
+    [string] $AdminUpn,
+
+    # The known-good account you already built by hand (the template).
+    [Parameter(Mandatory = $true)]
+    [string] $TemplateUpn = "MTR-Shure_Conference_Room@abc123.onmicrosoft.com",
+
+    # The new resource account to create.
+    [Parameter(Mandatory = $true)]
+    [string] $NewUpn = "MTR-Microsoft_Express_Install_1@abc123.onmicrosoft.com",
+
+    # Friendly display name shown in the GAL / Pro portal.
+    [Parameter(Mandatory = $true)]
+    [string] $NewDisplayName = "MTR-Microsoft_Express_Install_1",
+
+    # Password for the new room account. Prompted securely if omitted.
+    [Parameter(Mandatory = $false)]
+    [System.Security.SecureString] $NewPassword,
+
+    # Two-letter ISO usage location (required before licensing). Default: US.
+    [Parameter(Mandatory = $false)]
+    [string] $UsageLocation = "US",
+
+    # Mailbox time zone (Windows time zone ID).
+    # For Las Vegas / Pacific Time, use "Pacific Standard Time".
+    [Parameter(Mandatory = $false)]
+    [string] $TimeZone = "Pacific Standard Time",
+
+    # SkuPartNumber for the Teams Rooms Pro license in your tenant.
+    [Parameter(Mandatory = $false)]
+    [string] $TeamsRoomsProSku = "Microsoft_Teams_Rooms_Pro",
+
+    # Department value that the "MTR-CA-Bypass" dynamic group keys on.
+    [Parameter(Mandatory = $false)]
+    [string] $Department = "Resource Account for MTR"
+)
+
+$ErrorActionPreference = 'Stop'
+
+function Write-Step  { param([string]$m) Write-Host "`n=== $m ===" -ForegroundColor Cyan }
+function Write-Ok    { param([string]$m) Write-Host "  [OK]   $m" -ForegroundColor Green }
+function Write-Skip  { param([string]$m) Write-Host "  [SKIP] $m" -ForegroundColor Yellow }
+
+# ----------------------------------------------------------------------------
+# 0. Prompt for the password if it was not supplied on the command line.
+# ----------------------------------------------------------------------------
+if (-not $NewPassword) {
+    $NewPassword = Read-Host -AsSecureString "Enter password for $NewUpn"
+}
+# Plain-text copy used only for Exchange's New-Mailbox -Password / Graph reset.
+$plainPwd = [System.Net.NetworkCredential]::new('', $NewPassword).Password
+$alias    = ($NewUpn.Split('@')[0])   # local part, used as -Name / -Alias
+
+# ----------------------------------------------------------------------------
+# 1. Connect to Exchange Online and Microsoft Graph.
+# ----------------------------------------------------------------------------
+Write-Step "Connecting to Exchange Online and Microsoft Graph"
+
+Import-Module ExchangeOnlineManagement -ErrorAction Stop
+Connect-ExchangeOnline -UserPrincipalName $AdminUpn -ShowBanner:$false
+Write-Ok "Connected to Exchange Online as $AdminUpn"
+
+Import-Module Microsoft.Graph.Users -ErrorAction Stop
+Import-Module Microsoft.Graph.Identity.DirectoryManagement -ErrorAction Stop
+Connect-MgGraph -Scopes "User.ReadWrite.All","Organization.Read.All" -NoWelcome
+Write-Ok "Connected to Microsoft Graph"
+
+# ----------------------------------------------------------------------------
+# 2. Create the new Room mailbox/resource account (skip if it already exists).
+# ----------------------------------------------------------------------------
+Write-Step "Creating room mailbox: $NewUpn"
+
+$existing = Get-Mailbox -Identity $NewUpn -ErrorAction SilentlyContinue
+
+if ($existing) {
+    Write-Skip "Mailbox already exists - will update settings only."
+}
+else {
+    if ($PSCmdlet.ShouldProcess($NewUpn, "New-Mailbox -Room")) {
+
+        New-Mailbox -Room `
+            -Name $alias `
+            -Alias $alias `
+            -DisplayName $NewDisplayName `
+            -MicrosoftOnlineServicesID $NewUpn `
+            -PrimarySmtpAddress $NewUpn `
+            -EnableRoomMailboxAccount $true `
+            -RoomMailboxPassword $NewPassword | Out-Null
+
+        Write-Ok "Room mailbox created."
+    }
+}
+
+# ----------------------------------------------------------------------------
+# 3. Set Usage Location (required before a license can be assigned).
+# ----------------------------------------------------------------------------
+Write-Step "Setting Usage Location ($UsageLocation) and Department"
+
+# Graph user objects can lag mailbox creation by a few seconds.
+$graphUser = $null
+for ($i = 0; $i -lt 12 -and -not $graphUser; $i++) {
+    $graphUser = Get-MgUser -Filter "userPrincipalName eq '$NewUpn'" -ErrorAction SilentlyContinue
+    if (-not $graphUser) { Start-Sleep -Seconds 5 }
+}
+if (-not $graphUser) { throw "User $NewUpn not yet visible in Microsoft Graph. Re-run in a minute." }
+
+Update-MgUser -UserId $graphUser.Id -UsageLocation $UsageLocation -Department $Department
+Write-Ok "Usage Location = $UsageLocation; Department = '$Department' (drives MTR-CA-Bypass group)."
+
+# ----------------------------------------------------------------------------
+# 4. Assign the Microsoft Teams Rooms Pro license.
+# ----------------------------------------------------------------------------
+Write-Step "Assigning Teams Rooms Pro license"
+
+$sku = Get-MgSubscribedSku -All | Where-Object SkuPartNumber -eq $TeamsRoomsProSku
+if (-not $sku) {
+    Write-Skip "SKU '$TeamsRoomsProSku' not found. Available SKUs:"
+    Get-MgSubscribedSku -All |
+        Select-Object SkuPartNumber, SkuId,
+            @{n='Avail';e={ $_.PrepaidUnits.Enabled - $_.ConsumedUnits }} |
+        Format-Table -AutoSize
+    throw "Adjust -TeamsRoomsProSku to match a SkuPartNumber listed above, then re-run."
+}
+
+$hasLicense = (Get-MgUserLicenseDetail -UserId $graphUser.Id -ErrorAction SilentlyContinue).SkuId -contains $sku.SkuId
+if ($hasLicense) {
+    Write-Skip "Teams Rooms Pro already assigned."
+}
+else {
+    Set-MgUserLicense -UserId $graphUser.Id `
+        -AddLicenses @(@{ SkuId = $sku.SkuId }) `
+        -RemoveLicenses @() | Out-Null
+    Write-Ok "Teams Rooms Pro ($($sku.SkuPartNumber)) assigned."
+}
+
+# ----------------------------------------------------------------------------
+# 5. Copy calendar-processing (AutoAccept) settings from the template.
+#    Falls back to Microsoft's recommended MTR values if the template can't
+#    be read, so the new room always lands in a known-good state.
+# ----------------------------------------------------------------------------
+Write-Step "Configuring calendar processing (copying from template)"
+
+$tpl = Get-CalendarProcessing -Identity $TemplateUpn -ErrorAction SilentlyContinue
+
+$calParams = @{
+    Identity                      = $NewUpn
+    AutomateProcessing            = if ($tpl) { $tpl.AutomateProcessing }            else { 'AutoAccept' }
+    AddOrganizerToSubject         = if ($tpl) { $tpl.AddOrganizerToSubject }         else { $false }
+    AllowRecurringMeetings        = if ($tpl) { $tpl.AllowRecurringMeetings }        else { $true }
+    DeleteAttachments             = if ($tpl) { $tpl.DeleteAttachments }             else { $true }
+    DeleteComments                = if ($tpl) { $tpl.DeleteComments }                else { $false }
+    DeleteSubject                 = if ($tpl) { $tpl.DeleteSubject }                 else { $false }
+    ProcessExternalMeetingMessages= if ($tpl) { $tpl.ProcessExternalMeetingMessages} else { $true }
+    RemovePrivateProperty         = if ($tpl) { $tpl.RemovePrivateProperty }         else { $false }
+    AddAdditionalResponse         = if ($tpl) { $tpl.AddAdditionalResponse }         else { $true }
+    AdditionalResponse            = if ($tpl -and $tpl.AdditionalResponse) { $tpl.AdditionalResponse }
+                                    else { "This is a Microsoft Teams Meeting room" }
+}
+Set-CalendarProcessing @calParams
+if ($tpl) { Write-Ok "Calendar processing copied from $TemplateUpn." }
+else      { Write-Ok "Template not readable - applied Microsoft recommended MTR defaults." }
+
+# ----------------------------------------------------------------------------
+# 6. Set the mailbox time zone (and language).
+# ----------------------------------------------------------------------------
+Write-Step "Setting mailbox time zone: $TimeZone"
+Set-MailboxRegionalConfiguration -Identity $NewUpn -Language 1033 -TimeZone $TimeZone
+$rc = Get-MailboxRegionalConfiguration -Identity $NewUpn
+Write-Ok "Time zone = $($rc.TimeZone)"
+
+# ----------------------------------------------------------------------------
+# 7. Disable password expiration so the room never gets locked out.
+# ----------------------------------------------------------------------------
+Write-Step "Disabling password expiration"
+Update-MgUser -UserId $graphUser.Id -PasswordPolicies "DisablePasswordExpiration"
+Write-Ok "PasswordPolicies = DisablePasswordExpiration"
+
+# ----------------------------------------------------------------------------
+# 8. Summary / handoff notes for the onsite technician.
+# ----------------------------------------------------------------------------
+Write-Step "DONE - Resource account ready for Autologin"
+Write-Host @"
+  Account ......... $NewUpn
+  Display name .... $NewDisplayName
+  License ......... Teams Rooms Pro
+  Time zone ....... $TimeZone
+  CA bypass ....... Department = '$Department' (auto-joins MTR-CA-Bypass)
+  Password ........ (the value you supplied at the prompt)
+
+  NEXT STEPS
+   1. Verify sign-in with the Teams Rooms sign-in test:
+      https://testconnectivity.microsoft.com/tests/TeamsMTRDeviceSignIn/input
+   2. In the Teams Rooms Pro Management portal, assign this resource account
+      to the Autopilot-registered Windows MTR device (for Autologin).
+   3. Hand the UPN + password to Jon (onsite tech) only if a manual sign-in
+      is ever needed - Autologin should make that unnecessary.
+"@ -ForegroundColor Green
+
+# Disconnect-ExchangeOnline -Confirm:$false
+# Disconnect-MgGraph
+</code></pre>
+
+      <div class="callout tech">
+        <div class="ico">🛠️</div>
+        <div class="body">
+          <strong>Scale it</strong>
+          <p>Need Install_1 through Install_3? Loop it: <code>1..3 | ForEach-Object { .\Duplicate-MtrResourceAccount.ps1 -NewUpn "MTR-Microsoft_Express_Install_$_@abc123.onmicrosoft.com" ... }</code>. Each room lands in the exact same known-good state as the template.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 12 REMOTE -->
+    <section id="remote">
+      <h2><span class="stepnum">12</span> Remote access &amp; the power of Autologin</h2>
+      <p>Once the Shure Windows OS MTR device is registered, Entra ID grouped, and tied to its resource account, deployment onsite is ready to go: <strong>Jon the onsite tech unboxes it, plugs in power and Ethernet, powers it on, enters the resource account user and password along with the MFA bypass("Skip this step").</strong> The device provisions Windows, Entra-joins, enrolls in Intune, updates the Teams Rooms app, and <strong>Autologs in</strong> to its assigned resource account — touchless, in minutes.</p>
+
+      <h3>A real-world save (the Lenovo story)</h3>
+      <p>On a prior Windows MTR deployment, the onsite tech (no global admin, no local admin rights) couldn't get into the device's local admin. We even pulled in Lenovo support and ended up doing a factory reset — and the local-admin problem <em>still</em> persisted onsite.</p>
+      <p>What ultimately solved it: I logged into the MTR device <strong>remotely from the US to Canada — over 3,200&nbsp;km away</strong> — using my global admin login, reached the settings through the <strong>Teams Rooms Pro portal</strong>, changed the local admin password, and handed that off to the onsite tech. Being able to complete (and recover) the configuration remotely, after the Teams Room completed Autopilot/Autologin, was genuinely powerful — the remote login and admin experience in the Teams Rooms Pro portal is excellent.</p>
+      <div class="callout cloud">
+        <div class="ico">☁️</div>
+        <div class="body">
+          <strong>LAPS makes this even cleaner</strong>
+          <p>With the LAPS policy from <a href="#laps">Section 6</a>, the current local-admin password is retrievable from the Entra/Intune portal — so the next time an onsite tech needs local admin, I can pull it without a factory reset or a vendor support ticket.</p>
+        </div>
+      </div>
+      <p>Docs: <a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/remotely-access-teams-rooms">Remotely access Teams Rooms</a></p>
+    </section>
+
+    <!-- 13 HANDOFF -->
+    <section id="handoff">
+      <h2><span class="stepnum">13</span> The handoff to Jon</h2>
+      <p>Jon is the onsite technician deploying both Windows MTR devices at InfoComm 2026. He doesn't need — global admin — look to use least privledge roles. Instead, I assign him exactly the scoped roles he needs to do the job and nothing more.</p>
+
+      <h3>Entra ID roles assigned to Jon (4)</h3>
+      <table>
+        <thead><tr><th>Role</th><th>Why Jon has it</th></tr></thead>
+        <tbody>
+          <tr><td>Teams Administrator</td><td>Manage Teams device settings during deployment.</td></tr>
+          <tr><td>Global Reader</td><td>Read-only visibility across the tenant for troubleshooting.</td></tr>
+          <tr><td>Teams Devices Administrator</td><td>Manage and act on Teams-certified devices.</td></tr>
+          <tr><td>Teams Reader</td><td>Read Teams configuration and status.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Teams Rooms Pro portal roles assigned to Jon (2)</h3>
+      <table>
+        <thead><tr><th>Role</th><th>Why Jon has it</th></tr></thead>
+        <tbody>
+          <tr><td>Teams Rooms Pro Manager</td><td>Manage rooms and resource-account assignment in the Pro portal.</td></tr>
+          <tr><td>Remote Access Role</td><td>Remotely sign in to the MTR devices through Teams Rooms Pro — the same capability that saved the Lenovo deployment in <a href="#remote">Section 12</a>.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Local admin on the Shure MTR</h3>
+      <p>Jon will needs to get into the device settings locally after sign-in to complete the config, the Shure MTR local admin account is:</p>
+      <div class="specs">
+        <div class="spec"><div class="k">Local admin user</div><div class="v"><code>.\admin</code></div></div>
+        <div class="spec"><div class="k">Default password</div><div class="v"><code>sfb</code></div></div>
+      </div>
+      <div class="callout warn">
+        <div class="ico">🔒</div>
+        <div class="body">
+          <strong>Change the default immediately</strong>
+          <p><code>sfb</code> is the well-known default. With LAPS in place, the managed local-admin password is rotated and retrievable from the portal — use that rather than leaving the default in place.</p>
+        </div>
+      </div>
+
+      <div class="handoff">
+        <div class="persona mark">
+          <span class="role">Cloud Engineer · Mark</span>
+          <h4>Delivers</h4>
+          <p>Registered devices, full Intune/Entra/Pro config, two licensed resource accounts (template + duplicate), validated sign-in, and scoped roles for Jon.</p>
+        </div>
+        <div class="arrow">→</div>
+        <div class="persona jon">
+          <span class="role">Onsite Tech · Jon</span>
+          <h4>Executes</h4>
+          <p>Unbox → power + Ethernet → power on → Autologin. If anything needs a hand, Mark steps in remotely through the Teams Rooms Pro portal.</p>
+        </div>
+      </div>
+
+      <h3>Shure support references</h3>
+      <ul>
+        <li><a href="https://service.shure.com/articles/en_US/Knowledge/enterprise-network-troubleshooting-checklist">Shure enterprise network troubleshooting checklist</a></li>
+        <li><a href="https://www.shure.com/en-US/products/video-conferencing/imxf5?variant=IMXF5">Shure IntelliMix Foundation (IMXF5)</a></li>
+        <li><a href="https://www.shure.com/en-US/support/warranty">Shure warranty</a></li>
+      </ul>
+    </section>
+
+    <!-- REFERENCES -->
+    <section id="refs">
+      <h2>References (official Microsoft docs)</h2>
+      <ul class="refs">
+        <li><a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-autologin">Windows Autopilot and Autologin for Teams Rooms on Windows</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/autopilot/partner-registration">Windows Autopilot — partner registration</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/autopilot-registration4partners">Autopilot registration for partners (Teams Rooms)</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/autopilot/self-deploying">Windows Autopilot self-deploying mode</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/autopilot/tutorial/self-deploying/self-deploying-autopilot-profile#create-and-assign-self-deploying-windows-autopilot-profile">Create &amp; assign a self-deploying Autopilot profile</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings">LAPS management policy settings</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/create-resource-account?tabs=m365-admin-center%2Cgraph-powershell-password">Create &amp; configure resource accounts for Teams Rooms</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/microsoftteams/hybrid-meetings-device-config-mailbox">Configure mailbox properties (Set-CalendarProcessing)</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/troubleshoot/exchange/user-and-shared-mailboxes/incorrect-missing-time-zone-settings">Mailbox time zone settings</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/conditional-access-and-compliance-for-devices">Conditional Access &amp; compliance for Teams Rooms devices</a></li>
+        <li><a href="https://learn.microsoft.com/en-us/microsoftteams/rooms/remotely-access-teams-rooms">Remotely access Teams Rooms</a></li>
+        <li><a href="https://testconnectivity.microsoft.com/tests/TeamsMTRDeviceSignIn/input">Teams Rooms device sign-in test</a></li>
+        <li><a href="https://www.infocommshow.org/">InfoComm 2026</a></li>
+      </ul>
+      <div class="callout note">
+        <div class="ico">📝</div>
+        <div class="body">
+          <strong>Draft note & Important reminder</strong>
+          <p>-This draft keeps the <code>abc123.onmicrosoft.com</code> domain and genericized hardware identifiers (PKID <code>555555555555</code>, generic serial number) so the walkthrough can be validated end-to-end before publishing. Swap the domain and any remaining identifiers for the public, anonymized version.</p>
+          
+          <p>-After you create and resource accounts, make sure you as the Admin login and test the password and that you can bypass MFA.</p>
+
+          <p>~I really hope this guide can help you streamline your Windows OS, Teams Rooms device deployments.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+</div>
+
+<!-- ===================== FOOTER ===================== -->
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="brand">Microsoft Teams Rooms on Windows — Part 2 of 2</div>
+      <div class="disclaimer">A two-part technical series on deploying Microsoft Teams Rooms for InfoComm 2026. Part 1 covers Android-based MTR; Part 2 (this post) covers Windows-based MTR with Autopilot, Autologin, Intune, and Entra ID. Written by Mark Layton, The Avail Group.</div>
+    </div>
+    <div>
+      <a href="https://discgolfer78.github.io/TeamsRoomsAndroid/">← Read Part 1 (Android)</a>
+    </div>
+  </div>
+</footer>
+
+
+<script>
+(function(){
+  function fallbackCopy(text){
+    return new Promise(function(resolve, reject){
+      var textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.setAttribute('readonly', '');
+      textArea.style.position = 'fixed';
+      textArea.style.top = '-9999px';
+      textArea.style.left = '-9999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        var successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        successful ? resolve() : reject(new Error('Copy command failed'));
+      } catch (err) {
+        document.body.removeChild(textArea);
+        reject(err);
+      }
+    });
+  }
+
+  function copyText(text){
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    }
+    return fallbackCopy(text);
+  }
+
+  function setButtonState(button, label, className){
+    var originalLabel = button.dataset.originalLabel || button.textContent;
+    button.dataset.originalLabel = originalLabel;
+    button.textContent = label;
+    button.classList.remove('copied', 'copy-failed');
+    if (className) button.classList.add(className);
+
+    window.setTimeout(function(){
+      button.textContent = originalLabel;
+      button.classList.remove('copied', 'copy-failed');
+    }, 1800);
+  }
+
+  document.querySelectorAll('.code-head').forEach(function(header){
+    var pre = header.nextElementSibling;
+    if (!pre || pre.tagName.toLowerCase() !== 'pre') return;
+
+    var button = header.querySelector('.copy-code-btn');
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'copy-code-btn';
+      button.setAttribute('aria-label', 'Copy code block');
+      button.textContent = 'Copy';
+      header.appendChild(button);
+    }
+
+    button.addEventListener('click', function(){
+      var code = pre.querySelector('code');
+      var text = code ? code.innerText : pre.innerText;
+      copyText(text).then(function(){
+        setButtonState(button, 'Copied', 'copied');
+      }).catch(function(){
+        setButtonState(button, 'Failed', 'copy-failed');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -421,7 +421,7 @@
     <!-- 2 GROUP -->
     <section id="group">
       <h2><span class="stepnum">2</span> Create an Entra ID dynamic device group</h2>
-      <p>I create one dynamic <strong>device</strong> group — <code>MTR Dynamic device group</code> — and target <em>all</em> MTR policy at it: apps, the Autopilot profile, the ESP, and LAPS. When a device is registered in Partner Center, with the <code>MTR-</code> Group Tag, this dynamic membership rule automatically adds the MTR device to the group. Note: you may need to sync in Intune and it can take up to 15-20 mins for the deviec to show up in Intune.</p>
+      <p>I create one dynamic <strong>device</strong> group — <code>MTR Dynamic device group</code> — and target <em>all</em> MTR policy at it: apps, the Autopilot profile, the ESP, and LAPS. When a device is registered in Partner Center, with the <code>MTR-</code> Group Tag, this dynamic membership rule automatically adds the MTR device to the group. Note: you may need to sync in Intune and it can take up to 15-20 mins for the device to show up in Intune.</p>
       <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Dynamic membership rule <span class="lang">Entra ID</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
       <pre><code>(device.devicePhysicalIds -any _ -startswith "[OrderID]:MTR-")</code></pre>
       <div class="callout cloud">

@@ -547,7 +547,7 @@ Connect-ExchangeOnline -UserPrincipalName Admin@abc123.onmicrosoft.com -ShowBann
   -AdditionalResponse "Your meeting has been scheduled with the Shure, Microsoft Teams Room"</code></pre>
 
       <h3>Set the time zone to Pacific Time for InfoComm 2026 in Las Vegas</h3>
-      <p>For Las Vegas, use the Windows/Exchange time zone ID <code>Pacific Standard Time</code>. Even though the ID says “Standard,” it is the correct value for Pacific Time and automatically handles daylight saving time where applicable. Note: run the 2 PowerShell commands below individually.(The first script below sets the time zone and the 2nd one verifies the time zone</p>
+      <p>For Las Vegas, use the Windows/Exchange time zone ID <code>Pacific Standard Time</code>. Even though the ID says “Standard,” it is the correct value for Pacific Time and automatically handles daylight saving time where applicable. Note: run the 2 PowerShell commands below individually (The first script below sets the time zone and the 2nd one verifies the time zone).</p>
       <div class="code-head"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> Time zone <span class="lang">Exchange Online</span><button type="button" class="copy-code-btn" aria-label="Copy code block">Copy</button></div>
       <pre><code># Set
 Set-MailboxRegionalConfiguration -Identity "MTR-Shure_Conference_Room@abc123.onmicrosoft.com" -TimeZone "Pacific Standard Time"
